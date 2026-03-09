@@ -79,3 +79,31 @@ Add-Content -Path $PROFILE -Value $profileFunction
 [Oh My Posh](https://ohmypo.sh/docs/installation/windows) enhances your PowerShell prompt with themes and AWS profile display.
 
 [Here's my configuration](https://gist.github.com/michaelsanford/0ff562591a78f6815bb72fc879aead01).
+
+
+---
+
+## Bash/Zsh Version
+
+A bash/zsh version is available as `switch-aws-profile.sh`.
+
+**Installation:**
+
+```bash
+# Copy to a directory in your PATH
+mkdir -p ~/.local/bin
+cp switch-aws-profile.sh ~/.local/bin/sap
+chmod +x ~/.local/bin/sap
+
+# Add function to your ~/.bashrc or ~/.zshrc
+echo 'sap() { source ~/.local/bin/sap; }' >> ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+**Usage:**
+
+```bash
+sap
+```
+
+Note: The function sources the script so AWS_PROFILE persists in your current shell.
