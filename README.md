@@ -2,6 +2,8 @@
 
 Interactive PowerShell tool for switching between AWS SSO profiles.
 
+[![Build](https://github.com/michaelsanford/Switch-AwsProfile/actions/workflows/lint.yml/badge.svg)](https://github.com/michaelsanford/Switch-AwsProfile/actions/workflows/lint.yml)
+
 ## Features
 
 - Reads profiles from `${env:USERPROFILE}\.aws\config`
