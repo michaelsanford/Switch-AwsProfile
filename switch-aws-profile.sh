@@ -25,7 +25,7 @@ menu_size=$((${#profiles[@]} + 3))  # profiles + header lines
 draw_menu() {
     echo -e "\nAWS SSO Profiles (arrow keys, Enter to select, Esc to cancel):\n"
     for i in "${!profiles[@]}"; do
-        if [ $i -eq $selected ]; then
+        if [ "$i" -eq "$selected" ]; then
             echo -e "  \033[32m> ${profiles[$i]}\033[0m"
         else
             echo "    ${profiles[$i]}"
