@@ -19,6 +19,8 @@ sap
 
 Navigate with arrow keys, press Enter to select, or Esc to cancel.
 
+![screenshot](screenshot.png)
+
 ## Installation
 
 ### Quick Setup (PowerShell)
