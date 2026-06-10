@@ -6,9 +6,10 @@ Interactive PowerShell tool for switching between AWS SSO profiles.
 
 ## Features
 
-- Reads profiles from `${env:USERPROFILE}\.aws\config`
-- Arrow key navigation
-- Sets `AWS_PROFILE` in current shell
+- Reads profiles from `~\.aws\config` in file order, with optional A→Z / Z→A sort
+- Arrow key, Page Up/Down navigation with scrolling viewport
+- Bordered interactive menu with key hints
+- Sets `AWS_PROFILE` in the current shell
 - Automatically triggers `aws sso login`
 
 ## Usage
@@ -17,66 +18,53 @@ Interactive PowerShell tool for switching between AWS SSO profiles.
 sap
 ```
 
-Navigate with arrow keys, press Enter to select, or Esc to cancel.
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Move selection |
+| `PgUp` / `PgDn` | Jump half a page |
+| `S` | Cycle sort mode (file order → A→Z → Z→A) |
+| `Enter` | Select profile and login |
+| `Esc` | Cancel |
 
 ![screenshot](screenshot.png)
 
 ## Installation
 
+The script defines a `Switch-AwsProfile` function and a `sap` alias. Dot-sourcing it once in `$PROFILE` loads both at shell startup — no wrapper function needed.
+
 ### Quick Setup (PowerShell)
 
-Run these commands to install:
-
 ```powershell
-# Create Scripts directory
+# Copy script to a persistent location
 $scriptsDir = "$env:LOCALAPPDATA\Scripts"
 New-Item -ItemType Directory -Path $scriptsDir -Force
-
-# Copy script to Scripts directory
 Copy-Item .\Switch-AwsProfile.ps1 $scriptsDir\
 
-# Add Scripts directory to user PATH (if not already there)
-$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($userPath -notlike "*$scriptsDir*") {
-    [Environment]::SetEnvironmentVariable("Path", "$userPath;$scriptsDir", "User")
-    $env:Path += ";$scriptsDir"
-}
+# Append a dot-source line to $PROFILE
+Add-Content -Path $PROFILE -Value "`n# AWS Profile Switcher`n. `"$scriptsDir\Switch-AwsProfile.ps1`""
 
-# Add function to PowerShell profile
-$profileFunction = @"
-
-# AWS Profile Switcher
-if (-not (Get-Command sap -ErrorAction SilentlyContinue)) {
-    function sap { . `"`$env:LOCALAPPDATA\Scripts\Switch-AwsProfile.ps1`" }
-}
-"@
-
-Add-Content -Path $PROFILE -Value $profileFunction
-
-# Reload profile
+# Load it now without restarting the shell
 . $PROFILE
 ```
 
 ### Manual Installation
 
-1. Create `%LOCALAPPDATA%\Scripts\` directory
-2. Copy `Switch-AwsProfile.ps1` to that directory
-3. Add `%LOCALAPPDATA%\Scripts` to your user PATH environment variable
-4. Add this to your PowerShell profile (`$PROFILE`):
+1. Copy `Switch-AwsProfile.ps1` to any permanent location, e.g. `%LOCALAPPDATA%\Scripts\`.
+2. Add one line to your PowerShell profile (`$PROFILE`):
 
    ```powershell
-   if (-not (Get-Command sap -ErrorAction SilentlyContinue)) {
-       function sap { . "$env:LOCALAPPDATA\Scripts\Switch-AwsProfile.ps1" }
-   }
+   . "$env:LOCALAPPDATA\Scripts\Switch-AwsProfile.ps1"
    ```
 
-5. Reload your profile: `. $PROFILE`
+3. Reload: `. $PROFILE`
+
+`Switch-AwsProfile` and `sap` are now available in every new shell session.
 
 ## Requirements
 
 - [PowerShell 7+](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) installed
-- Configured AWS SSO profiles in `${env:USERPROFILE}\.aws\config`
+- Configured AWS SSO profiles in `~\.aws\config`
 
 ## Recommended
 
@@ -84,14 +72,13 @@ Add-Content -Path $PROFILE -Value $profileFunction
 
 [Here's my configuration](https://gist.github.com/michaelsanford/0ff562591a78f6815bb72fc879aead01).
 
-
 ---
 
 ## Bash/Zsh Version
 
-A bash/zsh version is available as `switch-aws-profile.sh`.
+A bash/zsh port is available as `switch-aws-profile.sh`.
 
-**Installation:**
+### Installation
 
 ```bash
 # Copy to a directory in your PATH
@@ -99,15 +86,12 @@ mkdir -p ~/.local/bin
 cp switch-aws-profile.sh ~/.local/bin/sap
 chmod +x ~/.local/bin/sap
 
-# Add function to your ~/.bashrc or ~/.zshrc
+# Add a sourcing wrapper to ~/.bashrc or ~/.zshrc
 echo 'sap() { source ~/.local/bin/sap; }' >> ~/.bashrc  # or ~/.zshrc
 source ~/.bashrc  # or source ~/.zshrc
 ```
 
-**Usage:**
+The wrapper sources the script so `AWS_PROFILE` persists in the current shell.
 
-```bash
-sap
-```
-
-Note: The function sources the script so AWS_PROFILE persists in your current shell.
+> **Note:** Natural number sorting (`Admin-2` before `Admin-10`) requires GNU coreutils
+> `sort -V`, available by default on Linux and via Homebrew (`brew install coreutils`) on macOS.
