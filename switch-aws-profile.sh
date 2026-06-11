@@ -4,7 +4,18 @@
 # Reads AWS SSO profiles from ~/.aws/config and presents an interactive menu
 # Sets AWS_PROFILE environment variable and triggers aws sso login
 
+if ! command -v aws &>/dev/null; then
+    echo "aws CLI not found. Install it from https://aws.amazon.com/cli/" >&2
+    exit 1
+fi
+
 config_path="$HOME/.aws/config"
+
+if [[ ! -f "$config_path" ]]; then
+    echo "AWS config not found at $config_path" >&2
+    exit 1
+fi
+
 profiles=()
 
 while IFS= read -r line; do

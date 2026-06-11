@@ -22,7 +22,18 @@
 function Switch-AwsProfile {
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+    if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
+        Write-Host "aws CLI not found. Install it from https://aws.amazon.com/cli/" -ForegroundColor Red
+        return
+    }
+
     $configPath = "$env:USERPROFILE\.aws\config"
+
+    if (-not (Test-Path $configPath)) {
+        Write-Host "AWS config not found at $configPath" -ForegroundColor Red
+        return
+    }
+
     $profiles = @()
 
     Get-Content $configPath | ForEach-Object {
