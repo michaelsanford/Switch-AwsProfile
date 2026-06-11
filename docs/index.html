@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.github.com; img-src 'self'; font-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none';" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Permissions-Policy"
+        content="camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=(), usb=(), bluetooth=(), serial=(), hid=()" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Switch-AwsProfile</title>
+  <meta name="description" content="Interactive terminal menu for switching AWS SSO profiles. Arrow key navigation, smart sorting, instant aws sso login. Free and open source." />
+  <meta property="og:title" content="Switch-AwsProfile" />
+  <meta property="og:description" content="Interactive terminal menu for switching AWS SSO profiles. Arrow key navigation, smart sorting, instant login." />
+  <meta property="og:image" content="https://michaelsanford.github.io/Switch-AwsProfile/switch-awsprofile-social-icon.png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="640" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://michaelsanford.github.io/Switch-AwsProfile/switch-awsprofile-social-icon.png" />
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --surface2:#1c2128;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --accent:  #58a6ff;
+      --green:   #3fb950;
+      --yellow:  #d29922;
+      --radius:  10px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.85em;
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Nav ──────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    .nav-brand {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Hero ─────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 72px 24px 56px;
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, #1a2d4a 0%, transparent 70%);
+    }
+.hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, var(--text) 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero .tagline {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 500px;
+      margin: 0 auto 28px;
+    }
+    .badges {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid;
+    }
+    .badge-blue  { background: #0d2137; border-color: #1f6feb; color: #58a6ff; }
+    .badge-green { background: #0d2614; border-color: #238636; color: #3fb950; }
+    .badge-gray  { background: var(--surface2); border-color: var(--border); color: var(--muted); }
+    .cta {
+      display: inline-block;
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 11px 28px;
+      border-radius: 8px;
+      transition: opacity 0.15s;
+    }
+    .cta:hover { opacity: 0.85; text-decoration: none; }
+    #latest-version { margin-top: 12px; font-size: 0.85rem; color: var(--muted); }
+
+    /* ── Terminal ─────────────────────────────────────── */
+    .demo { padding: 16px 24px 56px; }
+    .terminal {
+      max-width: 600px;
+      margin: 0 auto;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
+    }
+    .term-bar {
+      background: #2a2b36;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .term-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.76rem;
+      color: var(--muted);
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .term-body {
+      background: #0d1117;
+      padding: 20px 28px 24px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .t-prompt { color: var(--green); }
+    .t-cmd    { color: var(--text); }
+    .t-box    { color: #565f89; }
+    .t-title  { color: var(--text); }
+    .t-sel    { background: #1b4b6b; color: #e6edf3; }
+    .t-key    { color: var(--accent); }
+
+    /* ── Sections ─────────────────────────────────────── */
+    section {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+    }
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 24px;
+    }
+
+    /* ── Feature grid ─────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: var(--accent); }
+    .feature-icon { font-size: 1.6rem; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+    .feature-card p { font-size: 0.875rem; color: var(--muted); margin: 0; }
+
+    /* ── Install tabs ─────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      padding: 10px 22px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--text); background: var(--surface); }
+    .tab.active { color: var(--accent); background: var(--surface); border-color: var(--border); }
+    .tab-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      padding: 24px;
+    }
+
+    /* code blocks */
+    .code-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .code-header {
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    pre {
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.8rem;
+      line-height: 1.65;
+      margin: 0;
+    }
+    .c { color: var(--muted); }
+    .k { color: #79c0ff; }
+    .s { color: #a5d6ff; }
+    .f { color: #ffab70; }
+
+    /* keybindings table */
+    .keytable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      margin-top: 20px;
+    }
+    .keytable th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    .keytable td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .keytable tr:last-child td { border-bottom: none; }
+    kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.75rem;
+    }
+
+    /* ── Attestation ──────────────────────────────────── */
+    .attest-lead {
+      color: var(--muted);
+      font-size: 0.95rem;
+      max-width: 620px;
+      margin-bottom: 20px;
+    }
+    .note { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+
+    /* ── Footer ───────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 36px 24px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); text-decoration: underline; }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 600px) {
+      .hero { padding: 52px 16px 40px; }
+      .nav-links { gap: 16px; }
+      .term-body { font-size: 0.68rem; padding: 14px 16px; }
+      .feature-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <span class="nav-brand">sap</span>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#attestation">Provenance</a>
+      <a href="https://github.com/michaelsanford/Switch-AwsProfile">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Switch-AwsProfile</h1>
+  <p class="tagline">Interactive terminal menu for switching AWS SSO profiles — arrow keys, smart sort, instant login.</p>
+  <div class="badges">
+    <span class="badge badge-green">&#10003; Free &amp; Open Source</span>
+    <span class="badge badge-blue">PowerShell 7+</span>
+    <span class="badge badge-blue">Bash &amp; Zsh</span>
+    <span class="badge badge-gray">Windows &nbsp;&#183;&nbsp; macOS &nbsp;&#183;&nbsp; Linux</span>
+  </div>
+  <a class="cta" href="https://github.com/michaelsanford/Switch-AwsProfile/releases/latest">Download Latest Release &#8594;</a>
+  <div id="latest-version"></div>
+</div>
+
+<div class="demo">
+  <div class="terminal">
+    <div class="term-bar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <span class="term-title">bash &#8212; 80&#215;24</span>
+    </div>
+    <div class="term-body"><span class="t-prompt">$</span> <span class="t-cmd">sap</span>
+<span class="t-box">┌────────────────────────────────────────┐</span>
+<span class="t-box">│</span><span class="t-title"> AWS SSO Profiles · A→Z (3/7)          </span><span class="t-box">│</span>
+<span class="t-box">├────────────────────────────────────────┤</span>
+<span class="t-box">│</span>  dev-us-east-1                         <span class="t-box">│</span>
+<span class="t-box">│</span><span class="t-sel">  production-eu-west-1                  </span><span class="t-box">│</span>
+<span class="t-box">│</span>  sandbox                               <span class="t-box">│</span>
+<span class="t-box">│</span>  staging-eu-central-1                  <span class="t-box">│</span>
+<span class="t-box">└────────────────────────────────────────┘</span>
+  <span class="t-key">↑↓</span> Navigate   <span class="t-key">[Enter]</span> Select   <span class="t-key">[S]</span> Sort   <span class="t-key">[Esc]</span> Cancel</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <section id="features">
+    <div class="section-label">What you get</div>
+    <h2>Everything you need, nothing you don't</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">&#8597;</div>
+        <h3>Arrow key navigation</h3>
+        <p>Move with <kbd>&#8593;</kbd> <kbd>&#8595;</kbd> or jump half a page with <kbd>PgUp</kbd> <kbd>PgDn</kbd>. The viewport scrolls automatically as your profile list grows.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#8645;</div>
+        <h3>Three sort modes</h3>
+        <p>Press <kbd>S</kbd> to cycle: file order &#8594; A&#8594;Z &#8594; Z&#8594;A. Natural number sort keeps <code>Admin-2</code> before <code>Admin-10</code>. Your position is preserved across sorts.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#9654;</div>
+        <h3>Instant login</h3>
+        <p>Press <kbd>Enter</kbd> to set <code>AWS_PROFILE</code> in the current shell and immediately trigger <code>aws sso login</code> for the chosen profile.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#9632;</div>
+        <h3>Preflight checks</h3>
+        <p>Fails fast with a clear error message if <code>aws</code> is not on PATH or <code>~/.aws/config</code> does not exist — before anything else runs.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#9675;</div>
+        <h3>Zero dependencies</h3>
+        <p>A single script file. No packages, no installer. Dot-source the <code>.ps1</code> or source the <code>.sh</code> and you're done.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#9670;</div>
+        <h3>Verified builds</h3>
+        <p>Every release is signed via Sigstore keyless attestation. Verify that what you downloaded is exactly what was built from source &#8212; with one command.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="section-label">Get started</div>
+    <h2>Installation</h2>
+
+    <div class="tabs" id="os-tabs">
+      <button class="tab active" onclick="showTab('ps')">PowerShell</button>
+      <button class="tab" onclick="showTab('bash')">Bash / Zsh</button>
+    </div>
+
+    <div class="tab-content" id="tab-ps">
+      <div class="code-block">
+        <div class="code-header">PowerShell 7+</div>
+<pre><span class="c"># Extract to a permanent location</span>
+<span class="k">$dir</span> = <span class="s">"$env:LOCALAPPDATA\Scripts"</span>
+<span class="k">New-Item</span> <span class="f">-ItemType</span> Directory <span class="f">-Path</span> <span class="k">$dir</span> <span class="f">-Force</span>
+<span class="k">Expand-Archive</span> Switch-AwsProfile-<span class="s">vX.Y.Z</span>.zip <span class="f">-DestinationPath</span> <span class="k">$dir</span>
+
+<span class="c"># Add to your PowerShell profile and reload</span>
+<span class="k">Add-Content</span> <span class="f">-Path</span> <span class="k">$PROFILE</span> <span class="f">-Value</span> <span class="s">". `"$dir\Switch-AwsProfile.ps1`""</span>
+. <span class="k">$PROFILE</span></pre>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">
+        Loads <code>Switch-AwsProfile</code> and the <code>sap</code> alias in every new shell session.
+        Requires <a href="https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows">PowerShell 7+</a>
+        and <a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html">AWS CLI</a>.
+      </p>
+      <table class="keytable">
+        <tr><th>Key</th><th>Action</th></tr>
+        <tr><td><kbd>&#8593;</kbd> <kbd>&#8595;</kbd></td><td>Move selection</td></tr>
+        <tr><td><kbd>PgUp</kbd> <kbd>PgDn</kbd></td><td>Jump half a page</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Cycle sort mode</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>Select profile and login</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Cancel without changes</td></tr>
+      </table>
+    </div>
+
+    <div class="tab-content" id="tab-bash" style="display:none;">
+      <div class="code-block">
+        <div class="code-header">Bash / Zsh</div>
+<pre><span class="c"># Extract and install</span>
+mkdir <span class="f">-p</span> ~/.local/bin
+tar <span class="f">-xzf</span> switch-aws-profile-<span class="s">vX.Y.Z</span>.tar.gz <span class="f">-C</span> ~/.local/bin
+chmod <span class="f">+x</span> ~/.local/bin/sap
+
+<span class="c"># Sourcing wrapper (so AWS_PROFILE persists in the current shell)</span>
+echo <span class="s">'sap() { source ~/.local/bin/sap; }'</span> >> ~/.bashrc
+source ~/.bashrc</pre>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">
+        For Zsh, replace <code>~/.bashrc</code> with <code>~/.zshrc</code>.
+        Natural number sorting (<code>Admin-2</code> before <code>Admin-10</code>) requires GNU coreutils
+        <code>sort -V</code> — standard on Linux, <code>brew install coreutils</code> on macOS.
+      </p>
+    </div>
+  </section>
+
+  <section id="attestation">
+    <div class="section-label">Supply chain security</div>
+    <h2>Build provenance</h2>
+    <p class="attest-lead">
+      Every release artifact is signed with <a href="https://sigstore.dev">Sigstore</a> keyless attestation
+      via GitHub Actions — no keys to manage or rotate. The attestation cryptographically binds each file
+      to the exact commit, workflow run, and repository that produced it.
+    </p>
+    <div class="code-block">
+      <div class="code-header">Bash &mdash; requires <a href="https://cli.github.com" style="color:var(--muted)">gh</a> 2.49+</div>
+<pre><span class="c"># Verify before installing</span>
+gh attestation verify Switch-AwsProfile-<span class="s">vX.Y.Z</span>.zip \
+  <span class="f">--repo</span> michaelsanford/Switch-AwsProfile
+
+gh attestation verify switch-aws-profile-<span class="s">vX.Y.Z</span>.tar.gz \
+  <span class="f">--repo</span> michaelsanford/Switch-AwsProfile</pre>
+    </div>
+    <p class="note">A passing result confirms the file was built from this repository's source and has not been modified since.</p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/michaelsanford/Switch-AwsProfile">GitHub</a> &nbsp;&middot;&nbsp;
+      <a href="https://github.com/michaelsanford/Switch-AwsProfile/releases">Releases</a> &nbsp;&middot;&nbsp;
+      <a href="https://github.com/michaelsanford/Switch-AwsProfile/issues">Issues</a> &nbsp;&middot;&nbsp;
+      MIT License
+    </p>
+    <p style="margin-top:10px">Made with ❤️ by <a href="https://github.com/michaelsanford">Michael</a></p>
+  </div>
+</footer>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + id).style.display = 'block';
+  event.target.classList.add('active');
+}
+
+fetch('https://api.github.com/repos/michaelsanford/Switch-AwsProfile/releases/latest')
+  .then(r => r.json())
+  .then(data => {
+    if (!data.tag_name) return;
+    const v = data.tag_name;
+    document.getElementById('latest-version').textContent = 'Latest: ' + v;
+    document.querySelectorAll('pre').forEach(el => {
+      el.innerHTML = el.innerHTML.replaceAll('vX.Y.Z', v);
+    });
+  })
+  .catch(() => {});
+</script>
+
+</body>
+</html>
