@@ -15,6 +15,7 @@ Interactive PowerShell tool for switching between AWS SSO profiles.
 - Bordered interactive menu with key hints
 - Sets `AWS_PROFILE` in the current shell
 - Automatically triggers `aws sso login`
+- Top-of-list `❌ Disconnect [profile@region]` entry clears the local AWS session variables and runs `aws sso logout`
 
 ## Usage
 
@@ -24,10 +25,10 @@ sap
 
 | Key | Action |
 |-----|--------|
-| `↑` / `↓` | Move selection |
+| `↑` / `↓` | Move selection (wraps around top/bottom) |
 | `PgUp` / `PgDn` | Jump half a page |
 | `S` | Cycle sort mode (file order → A→Z → Z→A) |
-| `Enter` | Select profile and login |
+| `Enter` | Select profile and login (or disconnect the current session) |
 | `Esc` | Cancel |
 
 ![screenshot](screenshot.png)

@@ -44,6 +44,19 @@ sort_mode=0
 sort_labels=("" " [A-Z]" " [Z-A]")
 display_profiles=("${profiles[@]}")
 
+# --- Disconnect entry ---
+# Pinned at the top of the menu; shows the currently-active session and clears it when selected.
+active_region="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+if [[ -n "$AWS_PROFILE" ]]; then
+    target="$AWS_PROFILE"
+    [[ -n "$active_region" ]] && target="$AWS_PROFILE@$active_region"
+else
+    target="none"
+fi
+disconnect_label="❌ Disconnect [$target]"
+
+menu_items=("$disconnect_label" "${display_profiles[@]}")
+
 update_display_profiles() {
     display_profiles=()
     local line
@@ -56,13 +69,14 @@ update_display_profiles() {
     else
         display_profiles=("${profiles[@]}")
     fi
+    menu_items=("$disconnect_label" "${display_profiles[@]}")
 }
 
 # --- Layout ---
 term_width=$(tput cols)
 term_height=$(tput lines)
 
-longest=0
+longest=${#disconnect_label}
 for p in "${profiles[@]}"; do
     (( ${#p} > longest )) && longest=${#p}
 done
@@ -72,7 +86,7 @@ inner_width=$(( longest + 4 ))
 (( inner_width > term_width - 4 )) && inner_width=$(( term_width - 4 ))
 
 viewport_size=$(( term_height - 6 ))
-(( viewport_size > ${#profiles[@]} )) && viewport_size=${#profiles[@]}
+(( viewport_size > ${#menu_items[@]} )) && viewport_size=${#menu_items[@]}
 if (( viewport_size < 1 )); then
     echo "Terminal too small to display menu."
     printf '  %s\n' "${profiles[@]}"
@@ -96,8 +110,8 @@ draw_menu() {
 
     local sort_label="${sort_labels[$sort_mode]}"
     local scroll_info=""
-    (( ${#display_profiles[@]} > viewport_size )) && \
-        scroll_info=" ($(( selected + 1 ))/${#display_profiles[@]})"
+    (( ${#menu_items[@]} > viewport_size )) && \
+        scroll_info=" ($(( selected + 1 ))/${#menu_items[@]})"
     local title=" AWS SSO Profiles${sort_label}${scroll_info}"
 
     printf '%s\033[K\n' "$top_border"
@@ -106,14 +120,16 @@ draw_menu() {
 
     local i name
     for ((i=scroll_offset; i<scroll_offset+viewport_size; i++)); do
-        name="${display_profiles[$i]}"
+        name="${menu_items[$i]}"
         if (( ${#name} > inner_width - 4 )); then
             name="${name:0:$(( inner_width - 5 ))}…"
         fi
+        # The ❌ emoji renders in 2 columns but counts as 1 char; trim padding to keep the border aligned.
+        wide=0; [[ "$name" == *"❌"* ]] && wide=1
         if (( i == selected )); then
-            printf "│${HL}  %-$(( inner_width - 2 ))s${R}│\033[K\n" "$name"
+            printf "│${HL}  %-$(( inner_width - 2 - wide ))s${R}│\033[K\n" "$name"
         else
-            printf "│  %-$(( inner_width - 2 ))s│\033[K\n" "$name"
+            printf "│  %-$(( inner_width - 2 - wide ))s│\033[K\n" "$name"
         fi
     done
 
@@ -168,14 +184,14 @@ while true; do
 
     page_jump=$(( viewport_size / 2 ))
     (( page_jump < 1 )) && page_jump=1
-    count=${#display_profiles[@]}
+    count=${#menu_items[@]}
 
     case "$action" in
         up)
-            (( selected > 0 )) && (( selected-- ))
+            selected=$(( (selected - 1 + count) % count ))
             ;;
         down)
-            (( selected < count - 1 )) && (( selected++ ))
+            selected=$(( (selected + 1) % count ))
             ;;
         pageup)
             (( selected -= page_jump ))
@@ -186,12 +202,12 @@ while true; do
             (( selected >= count )) && selected=$(( count - 1 ))
             ;;
         sort)
-            cur="${display_profiles[$selected]}"
+            cur="${menu_items[$selected]}"
             sort_mode=$(( (sort_mode + 1) % 3 ))
             update_display_profiles
             selected=0
-            for ((i=0; i<${#display_profiles[@]}; i++)); do
-                [[ "${display_profiles[$i]}" == "$cur" ]] && { selected=$i; break; }
+            for ((i=0; i<${#menu_items[@]}; i++)); do
+                [[ "${menu_items[$i]}" == "$cur" ]] && { selected=$i; break; }
             done
             ;;
         enter) break ;;
@@ -207,7 +223,14 @@ done
 
 cleanup
 
-selected_profile="${display_profiles[$selected]}"
+if (( selected == 0 )); then
+    unset AWS_PROFILE AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_REGION AWS_DEFAULT_REGION
+    echo "Disconnected — cleared AWS session variables."
+    aws sso logout
+    return 0 2>/dev/null || exit 0
+fi
+
+selected_profile="${display_profiles[$(( selected - 1 ))]}"
 export AWS_PROFILE="$selected_profile"
 
 echo "Set AWS_PROFILE to: $selected_profile"

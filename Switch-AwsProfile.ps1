@@ -66,12 +66,21 @@ function Switch-AwsProfile {
 
     $displayProfiles = $profiles
 
+    # --- Disconnect entry ---
+    # Pinned at the top of the menu; shows the currently-active session and clears it when selected.
+    $activeProfile = $env:AWS_PROFILE
+    $activeRegion  = if ($env:AWS_REGION) { $env:AWS_REGION } elseif ($env:AWS_DEFAULT_REGION) { $env:AWS_DEFAULT_REGION } else { $null }
+    $target = if ($activeProfile) { if ($activeRegion) { "$activeProfile@$activeRegion" } else { $activeProfile } } else { "none" }
+    $disconnectLabel = "❌ Disconnect [$target]"
+
+    $menuItems = @($disconnectLabel) + $displayProfiles
+
     # --- Layout calculations ---
-    $longestName = ($profiles | Measure-Object -Property Length -Maximum).Maximum
+    $longestName = (@($disconnectLabel) + $profiles | Measure-Object -Property Length -Maximum).Maximum
     $innerWidth = [Math]::Max($longestName + 4, 40)
     $innerWidth = [Math]::Min($innerWidth, [Console]::WindowWidth - 4)
 
-    $viewportSize = [Math]::Min($profiles.Count, [Console]::WindowHeight - 6)
+    $viewportSize = [Math]::Min($menuItems.Count, [Console]::WindowHeight - 6)
     if ($viewportSize -lt 1) {
         Write-Host "Terminal too small to display menu." -ForegroundColor Yellow
         $profiles | ForEach-Object { Write-Host "  $_" }
@@ -92,7 +101,7 @@ function Switch-AwsProfile {
         [Console]::SetCursorPosition(0, $drawTop)
 
         $sortInfo   = $sortLabels[$sortMode]
-        $scrollInfo = if ($displayProfiles.Count -gt $viewportSize) { " ($($selected + 1)/$($displayProfiles.Count))" } else { "" }
+        $scrollInfo = if ($menuItems.Count -gt $viewportSize) { " ($($selected + 1)/$($menuItems.Count))" } else { "" }
         $title = " AWS SSO Profiles$sortInfo$scrollInfo"
 
         [Console]::WriteLine($topBorder)
@@ -100,11 +109,13 @@ function Switch-AwsProfile {
         [Console]::WriteLine($separator)
 
         for ($i = $scrollOffset; $i -lt $scrollOffset + $viewportSize; $i++) {
-            $name = $displayProfiles[$i]
+            $name = $menuItems[$i]
             if ($name.Length -gt $innerWidth - 4) {
                 $name = $name.Substring(0, $innerWidth - 5) + '…'
             }
-            $line = "  $($name.PadRight($innerWidth - 2))"
+            # Wide glyphs (e.g. the ❌ emoji) render in 2 columns but count as 1 char; trim padding to keep the border aligned.
+            $wide = ([regex]::Matches($name, '\p{So}')).Count
+            $line = "  $($name.PadRight($innerWidth - 2 - $wide))"
             [Console]::Write("│")
             if ($i -eq $selected) {
                 $prevFg = [Console]::ForegroundColor
@@ -159,15 +170,16 @@ function Switch-AwsProfile {
         $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 
         switch ($key.VirtualKeyCode) {
-            38 { $selected = [Math]::Max(0, $selected - 1) }                                          # Up
-            40 { $selected = [Math]::Min($displayProfiles.Count - 1, $selected + 1) }                # Down
+            38 { $selected = ($selected - 1 + $menuItems.Count) % $menuItems.Count }                # Up (wraps)
+            40 { $selected = ($selected + 1) % $menuItems.Count }                                    # Down (wraps)
             33 { $selected = [Math]::Max(0, $selected - [Math]::Max(1, [int]($viewportSize / 2))) }  # Page Up
-            34 { $selected = [Math]::Min($displayProfiles.Count - 1, $selected + [Math]::Max(1, [int]($viewportSize / 2))) } # Page Down
+            34 { $selected = [Math]::Min($menuItems.Count - 1, $selected + [Math]::Max(1, [int]($viewportSize / 2))) } # Page Down
             83 {                                                                                        # S — cycle sort
-                $currentProfile  = $displayProfiles[$selected]
+                $currentItem     = $menuItems[$selected]
                 $sortMode        = ($sortMode + 1) % 3
                 $displayProfiles = Get-DisplayProfile
-                $newIndex        = [Array]::IndexOf([array]$displayProfiles, $currentProfile)
+                $menuItems       = @($disconnectLabel) + $displayProfiles
+                $newIndex        = [Array]::IndexOf([array]$menuItems, $currentItem)
                 $selected        = if ($newIndex -ge 0) { $newIndex } else { 0 }
             }
             13 { break }                                                                                # Enter
@@ -197,7 +209,16 @@ function Switch-AwsProfile {
     }
     [Console]::SetCursorPosition(0, $drawTop)
 
-    $selectedProfile = $displayProfiles[$selected]
+    if ($selected -eq 0) {
+        foreach ($var in 'AWS_PROFILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_REGION', 'AWS_DEFAULT_REGION') {
+            Remove-Item "Env:\$var" -ErrorAction SilentlyContinue
+        }
+        Write-Host "Disconnected — cleared AWS session variables." -ForegroundColor Yellow
+        aws sso logout
+        return
+    }
+
+    $selectedProfile = $displayProfiles[$selected - 1]
     $env:AWS_PROFILE = $selectedProfile
 
     Write-Host "Set AWS_PROFILE to: $selectedProfile" -ForegroundColor Green
