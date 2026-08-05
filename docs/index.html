@@ -186,6 +186,9 @@
     .t-title  { color: var(--text); }
     .t-sel    { background: #1b4b6b; color: #e6edf3; }
     .t-key    { color: var(--accent); }
+    /* Pins the emoji to exactly two character cells so the box border stays
+       aligned regardless of how the platform's emoji font advances. */
+    .t-wide   { display: inline-block; width: 2ch; }
 
     /* ── Sections ─────────────────────────────────────── */
     section {
@@ -316,6 +319,32 @@
       margin-bottom: 20px;
     }
     .note { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+    .code-header.with-copy {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .copy-btn {
+      flex-shrink: 0;
+      padding: 3px 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+    }
+    .copy-btn:hover { color: var(--text); background: var(--surface2); }
+    .copy-btn.copied { color: var(--accent); }
+    .ok { color: #56d364; }
+    /* soft-wrap long commands and output instead of scrolling horizontally */
+    pre.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #attestation .tab-content .code-block { margin-bottom: 0; }
+    .attest-output { margin-top: 20px; }
 
     /* ── Footer ───────────────────────────────────────── */
     footer {
@@ -374,8 +403,9 @@
     </div>
     <div class="term-body"><span class="t-prompt">$</span> <span class="t-cmd">sap</span>
 <span class="t-box">┌────────────────────────────────────────┐</span>
-<span class="t-box">│</span><span class="t-title"> AWS SSO Profiles · A→Z (3/7)          </span><span class="t-box">│</span>
+<span class="t-box">│</span><span class="t-title"> AWS SSO Profiles · A→Z (3/7)           </span><span class="t-box">│</span>
 <span class="t-box">├────────────────────────────────────────┤</span>
+<span class="t-box">│</span>  <span class="t-wide">❌</span> Disconnect [none]                  <span class="t-box">│</span>
 <span class="t-box">│</span>  dev-us-east-1                         <span class="t-box">│</span>
 <span class="t-box">│</span><span class="t-sel">  production-eu-west-1                  </span><span class="t-box">│</span>
 <span class="t-box">│</span>  sandbox                               <span class="t-box">│</span>
@@ -428,12 +458,12 @@
     <div class="section-label">Get started</div>
     <h2>Installation</h2>
 
-    <div class="tabs" id="os-tabs">
-      <button class="tab active" onclick="showTab('ps')">PowerShell</button>
-      <button class="tab" onclick="showTab('bash')">Bash / Zsh</button>
+    <div class="tabs">
+      <button class="tab active" data-os="ps" onclick="showTab('ps')">PowerShell</button>
+      <button class="tab" data-os="bash" onclick="showTab('bash')">Bash / Zsh</button>
     </div>
 
-    <div class="tab-content" id="tab-ps">
+    <div class="tab-content" data-os="ps">
       <div class="code-block">
         <div class="code-header">PowerShell 7+</div>
 <pre><span class="c"># Extract to a permanent location</span>
@@ -460,7 +490,7 @@
       </table>
     </div>
 
-    <div class="tab-content" id="tab-bash" style="display:none;">
+    <div class="tab-content" data-os="bash" style="display:none;">
       <div class="code-block">
         <div class="code-header">Bash / Zsh</div>
 <pre><span class="c"># Extract and install</span>
@@ -488,14 +518,53 @@ source ~/.bashrc</pre>
       via GitHub Actions — no keys to manage or rotate. The attestation cryptographically binds each file
       to the exact commit, workflow run, and repository that produced it.
     </p>
-    <div class="code-block">
-      <div class="code-header">Bash &mdash; requires <a href="https://cli.github.com" style="color:var(--muted)">gh</a> 2.49+</div>
-<pre><span class="c"># Verify before installing</span>
-gh attestation verify Switch-AwsProfile-<span class="s">vX.Y.Z</span>.zip \
-  <span class="f">--repo</span> michaelsanford/Switch-AwsProfile
+    <div class="tabs">
+      <button class="tab active" data-os="ps" onclick="showTab('ps')">PowerShell</button>
+      <button class="tab" data-os="bash" onclick="showTab('bash')">Bash / Zsh</button>
+    </div>
 
-gh attestation verify switch-aws-profile-<span class="s">vX.Y.Z</span>.tar.gz \
-  <span class="f">--repo</span> michaelsanford/Switch-AwsProfile</pre>
+    <div class="tab-content" data-os="ps">
+      <div class="code-block">
+        <div class="code-header with-copy">
+          <span>PowerShell 7+ &mdash; requires <a href="https://cli.github.com" style="color:var(--muted)">gh</a> 2.49+</span>
+          <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+        </div>
+<pre class="wrap">gh attestation verify Switch-AwsProfile-<span class="s">vX.Y.Z</span>.zip <span class="f">--repo</span> michaelsanford/Switch-AwsProfile</pre>
+      </div>
+    </div>
+
+    <div class="tab-content" data-os="bash" style="display:none;">
+      <div class="code-block">
+        <div class="code-header with-copy">
+          <span>Bash / Zsh &mdash; requires <a href="https://cli.github.com" style="color:var(--muted)">gh</a> 2.49+</span>
+          <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+        </div>
+<pre class="wrap">gh attestation verify switch-aws-profile-<span class="s">vX.Y.Z</span>.tar.gz <span class="f">--repo</span> michaelsanford/Switch-AwsProfile</pre>
+      </div>
+    </div>
+
+    <div class="code-block attest-output">
+      <div class="code-header">Example output</div>
+<pre class="wrap"><span class="c">&#10095;</span> gh attestation verify Switch-AwsProfile-<span class="s">vX.Y.Z</span>.zip <span class="f">--repo</span> michaelsanford/Switch-AwsProfile
+Loaded digest sha256:2b67d674259090f7ee67ecb203a4284ab859bc7da30b3c678138a32755cf3548 for file://Switch-AwsProfile-<span class="s">vX.Y.Z</span>.zip
+Loaded 1 attestation from GitHub API
+
+The following policy criteria will be enforced:
+<span class="c">- Predicate type must match:................ https://slsa.dev/provenance/v1
+- Source Repository Owner URI must match:... https://github.com/michaelsanford
+- Source Repository URI must match:......... https://github.com/michaelsanford/Switch-AwsProfile
+- Subject Alternative Name must match regex: (?i)^https://github\.com/michaelsanford/Switch-AwsProfile/
+- OIDC Issuer must match:................... https://token.actions.githubusercontent.com</span>
+
+<span class="ok">&#10003; Verification succeeded!</span>
+
+The following 1 attestation matched the policy criteria
+
+<span class="c">- Attestation #1
+  - Build repo:..... michaelsanford/Switch-AwsProfile
+  - Build workflow:. .github/workflows/release.yml@refs/tags/<span class="s">vX.Y.Z</span>
+  - Signer repo:.... michaelsanford/Switch-AwsProfile
+  - Signer workflow: .github/workflows/release.yml@refs/tags/<span class="s">vX.Y.Z</span></span></pre>
     </div>
     <p class="note">A passing result confirms the file was built from this repository's source and has not been modified since.</p>
   </section>
@@ -515,11 +584,24 @@ gh attestation verify switch-aws-profile-<span class="s">vX.Y.Z</span>.tar.gz \
 </footer>
 
 <script>
-function showTab(id) {
-  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + id).style.display = 'block';
-  event.target.classList.add('active');
+// Switches every tab group on the page at once, so the Installation and
+// Provenance sections always show the same shell.
+function showTab(os) {
+  document.querySelectorAll('.tab-content[data-os]').forEach(el => {
+    el.style.display = el.dataset.os === os ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab[data-os]').forEach(el => {
+    el.classList.toggle('active', el.dataset.os === os);
+  });
+}
+
+function copyCmd(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
+    btn.textContent = 'Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1600);
+  }).catch(() => { btn.textContent = 'Ctrl+C'; });
 }
 
 fetch('https://api.github.com/repos/michaelsanford/Switch-AwsProfile/releases/latest')
